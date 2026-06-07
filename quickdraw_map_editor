@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QUICKDRAW! Map Editor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Barlow:wght@400;500;600&display=swap');
+
+  :root {
+    --ink: #1a1208;
+    --parchment: #f5edd6;
+    --parchment-dark: #e8dbb8;
+    --rust: #b84a1a;
+    --rust-dark: #8c3412;
+    --gold: #c8972a;
+    --sage: #5a7a4a;
+    --dust: #9e8e72;
+    --panel: #211808;
+    --panel-light: #2e2010;
+    --border: #6b4e2a;
+    --cell: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--panel);
+    color: var(--parchment);
+    font-family: 'Barlow', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--ink);
+    border-bottom: 2px solid var(--gold);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-shrink: 0;
+  }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--gold);
+    letter-spacing: 3px;
+    line-height: 1;
+  }
+  header h1 span { color: var(--rust); }
+  .header-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--dust);
+    letter-spacing: 1px;
+  }
+  .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  /* BUTTONS */
+  .btn {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 1.5px;
+    font-size: 14px;
+    padding: 6px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--panel-light);
+    color: var(--parchment);
+  }
+  .btn:hover { background: var(--border); color: var(--parchment); }
+  .btn-rust { background: var(--rust-dark); border-color: var(--rust); color: #fff; }
+  .btn-rust:hover { background: var(--rust); }
+  .btn-gold { background: #5a3e10; border-color: var(--gold); color: var(--gold); }
+  .btn-gold:hover { background: var(--gold); color: var(--ink); }
+  .btn-sage { background: #2a3d20; border-color: var(--sage); color: #8fba76; }
+  .btn-sage:hover { background: var(--sage); color: #fff; }
+
+  /* MAIN LAYOUT */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    gap: 0;
+  }
+
+  /* LEFT PANEL — TOOLS */
+  .sidebar {
+    width: 200px;
+    flex-shrink: 0;
+    background: var(--ink);
+    border-right: 1.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 10px 0;
+  }
+  .sidebar-section {
+    padding: 8px 12px 4px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--dust);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .tool-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 14px;
+    cursor: pointer;
+    font-family: 'Barlow', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--parchment-dark);
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    transition: background 0.1s;
+    border-left: 3px solid transparent;
+  }
+  .tool-btn:hover { background: var(--panel-light); }
+  .tool-btn.active { background: var(--panel-light); border-left-color: var(--rust); color: #fff; }
+  .tool-icon {
+    width: 28px; height: 28px;
+    border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-weight: bold;
+    font-size: 11px;
+  }
+
+  .terrain-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 6px 10px;
+  }
+  .terrain-tile {
+    padding: 6px 4px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    text-align: center;
+    border: 1.5px solid transparent;
+    transition: all 0.1s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .terrain-tile:hover { border-color: var(--dust); }
+  .terrain-tile.active { border-color: var(--gold) !important; background: #3d2a08 !important; }
+  .terrain-tile .sym {
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1;
+  }
+  .terrain-tile .lbl {
+    font-size: 8px;
+    color: var(--dust);
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 8px 12px; opacity: 0.4; }
+
+  /* MAP AREA */
+  .map-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .map-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    background: var(--panel-light);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .map-toolbar label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--dust);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .map-toolbar input[type=number] {
+    width: 52px;
+    background: var(--ink);
+    border: 1px solid var(--border);
+    color: var(--parchment);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    padding: 3px 6px;
+    border-radius: 2px;
+  }
+  .layer-toggle {
+    display: flex;
+    gap: 0;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .layer-toggle button {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 1px;
+    font-size: 13px;
+    padding: 4px 12px;
+    border: none;
+    cursor: pointer;
+    background: var(--panel);
+    color: var(--dust);
+    transition: all 0.1s;
+  }
+  .layer-toggle button.active {
+    background: var(--rust-dark);
+    color: #fff;
+  }
+  .coord-display {
+    margin-left: auto;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    min-width: 80px;
+    text-align: right;
+  }
+
+  .canvas-wrapper {
+    flex: 1;
+    overflow: auto;
+    background: repeating-linear-gradient(
+      45deg,
+      #1a1208,
+      #1a1208 10px,
+      #1c1409 10px,
+      #1c1409 20px
+    );
+    padding: 20px;
+    cursor: crosshair;
+  }
+  canvas {
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  /* RIGHT PANEL — INFO */
+  .info-panel {
+    width: 180px;
+    flex-shrink: 0;
+    background: var(--ink);
+    border-left: 1.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0;
+    overflow-y: auto;
+  }
+  .info-section {
+    padding: 8px 12px;
+  }
+  .info-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--dust);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(107,78,42,0.2);
+    color: var(--parchment-dark);
+  }
+  .info-row span:last-child {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--gold);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--parchment-dark);
+  }
+  .legend-swatch {
+    width: 16px; height: 16px;
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.2);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: bold;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    display: none;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--panel);
+    border: 2px solid var(--gold);
+    border-radius: 6px;
+    padding: 24px;
+    max-width: 480px;
+    width: 90%;
+  }
+  .modal h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--gold);
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+  }
+  .modal p {
+    font-size: 13px;
+    color: var(--parchment-dark);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .modal textarea {
+    width: 100%;
+    height: 180px;
+    background: var(--ink);
+    border: 1px solid var(--border);
+    color: var(--parchment);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 8px;
+    border-radius: 3px;
+    resize: vertical;
+    margin-bottom: 12px;
+  }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  .toast {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    background: var(--sage);
+    color: #fff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    padding: 10px 16px;
+    border-radius: 4px;
+    z-index: 200;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>QUICKDRAW<span>!</span> MAP EDITOR</h1>
+    <div class="header-sub">48 × 48 · 1" GRID · GROUND + ROOF LAYERS</div>
+  </div>
+  <div class="header-actions">
+    <button class="btn" onclick="newMap()">⬜ New</button>
+    <button class="btn btn-gold" onclick="openImport()">📥 Import CSV</button>
+    <button class="btn btn-rust" onclick="openExport()">📤 Export to Sheets</button>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">TOOLS</div>
+    <button class="tool-btn active" id="tool-paint" onclick="setTool('paint')">
+      <div class="tool-icon" style="background:#8c3412;">✏</div> Paint
+    </button>
+    <button class="tool-btn" id="tool-erase" onclick="setTool('erase')">
+      <div class="tool-icon" style="background:#2e2010;">✕</div> Erase
+    </button>
+    <button class="tool-btn" id="tool-fill" onclick="setTool('fill')">
+      <div class="tool-icon" style="background:#1a3d1a;">▣</div> Fill
+    </button>
+    <button class="tool-btn" id="tool-rect" onclick="setTool('rect')">
+      <div class="tool-icon" style="background:#1a2a3d;">▭</div> Rectangle
+    </button>
+    <button class="tool-btn" id="tool-line" onclick="setTool('line')">
+      <div class="tool-icon" style="background:#3d1a3d;">/</div> Line
+    </button>
+
+    <div class="divider"></div>
+    <div class="sidebar-section">TERRAIN</div>
+    <div class="terrain-grid" id="terrain-palette"></div>
+  </div>
+
+  <!-- MAP AREA -->
+  <div class="map-area">
+    <div class="map-toolbar">
+      <div class="layer-toggle">
+        <button id="layer-ground" class="active" onclick="setLayer('ground')">GROUND</button>
+        <button id="layer-roof" onclick="setLayer('roof')">ROOF</button>
+      </div>
+      <label>W <input type="number" id="mapW" value="46" min="4" max="48" onchange="resizeMap()"></label>
+      <label>H <input type="number" id="mapH" value="48" min="4" max="48" onchange="resizeMap()"></label>
+      <label>Zoom
+        <input type="range" min="8" max="24" value="14" style="width:80px;" oninput="setZoom(this.value)">
+      </label>
+      <label><input type="checkbox" id="showRoofOverlay" onchange="render()"> Show roof overlay</label>
+      <div class="coord-display" id="coordDisplay">—</div>
+    </div>
+    <div class="canvas-wrapper" id="canvasWrapper">
+      <canvas id="mapCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- RIGHT INFO PANEL -->
+  <div class="info-panel">
+    <div class="info-section">
+      <div class="info-title">MAP STATS</div>
+      <div class="info-row"><span>Size</span><span id="statSize">—</span></div>
+      <div class="info-row"><span>Layer</span><span id="statLayer">Ground</span></div>
+      <div class="info-row"><span>Tool</span><span id="statTool">Paint</span></div>
+      <div class="info-row"><span>Selected</span><span id="statSelected">—</span></div>
+    </div>
+    <div class="divider" style="margin:4px 12px;"></div>
+    <div class="info-section">
+      <div class="info-title">TERRAIN COUNT</div>
+      <div id="terrainCount"></div>
+    </div>
+    <div class="divider" style="margin:4px 12px;"></div>
+    <div class="info-section">
+      <div class="info-title">LEGEND</div>
+      <div id="legend"></div>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <h2>📤 Export to Google Sheets</h2>
+    <p>Copy the CSV below. In Google Sheets, go to <strong>File → Import → Upload</strong>, choose <em>Replace current sheet</em>, and select <strong>Comma</strong> as separator.<br><br>Export both Ground and Roof layers separately.</p>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <button class="btn btn-rust" onclick="generateExport('ground')">Ground Layer</button>
+      <button class="btn btn-gold" onclick="generateExport('roof')">Roof Layer</button>
+    </div>
+    <textarea id="exportText" readonly placeholder="Click a layer button above..."></textarea>
+    <div class="modal-actions">
+      <button class="btn" onclick="copyExport()">📋 Copy to Clipboard</button>
+      <button class="btn btn-sage" onclick="downloadExport()">⬇ Download .csv</button>
+      <button class="btn" onclick="closeModal('exportModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <h2>📥 Import CSV from Sheets</h2>
+    <p>Paste CSV data from your Google Sheet below, then choose which layer it represents.</p>
+    <textarea id="importText" placeholder="Paste CSV here..."></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-rust" onclick="doImport('ground')">→ Ground Layer</button>
+      <button class="btn btn-gold" onclick="doImport('roof')">→ Roof Layer</button>
+      <button class="btn" onclick="closeModal('importModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const TERRAIN = [
+  { sym:'W0', name:'Wall',        color:'#4a3520', border:'#8c6a40', textColor:'#d4a96a', blocksMove:true,  blocksLOS:true  },
+  { sym:'W1', name:'Lrg Window',  color:'#3a4a5a', border:'#6a9aba', textColor:'#aad4f0', blocksMove:true,  blocksLOS:false },
+  { sym:'W2', name:'Sml Window',  color:'#2a3a4a', border:'#4a7a9a', textColor:'#8ab4d0', blocksMove:true,  blocksLOS:false },
+  { sym:'W3', name:'Roof Int',    color:'#3a2a1a', border:'#7a5a3a', textColor:'#c09060', blocksMove:false, blocksLOS:true  },
+  { sym:'W4', name:'Roof Edge',   color:'#5a3010', border:'#b06020', textColor:'#f09040', blocksMove:false, blocksLOS:false },
+  { sym:'L',  name:'Ladder',      color:'#3a2800', border:'#a07030', textColor:'#e0b060', blocksMove:false, blocksLOS:false },
+  { sym:'D',  name:'Door',        color:'#5a2a0a', border:'#c06020', textColor:'#f0a060', blocksMove:false, blocksLOS:true  },
+  { sym:'F',  name:'Fence',       color:'#2a3a1a', border:'#5a7a3a', textColor:'#90c060', blocksMove:false, blocksLOS:false },
+  { sym:'G',  name:'Tall Grass',  color:'#1a3010', border:'#3a6020', textColor:'#70a040', blocksMove:false, blocksLOS:false },
+  { sym:'R',  name:'Rubble',      color:'#3a3030', border:'#7a6a5a', textColor:'#c0a890', blocksMove:false, blocksLOS:false },
+  { sym:'$',  name:'Loot Token',  color:'#3a2a00', border:'#c8972a', textColor:'#ffd060', blocksMove:false, blocksLOS:false },
+  { sym:'*',  name:'Extract Pt',  color:'#002a2a', border:'#00a0a0', textColor:'#00e0e0', blocksMove:false, blocksLOS:false },
+  { sym:'?',  name:'VIP Token',   color:'#2a002a', border:'#a000a0', textColor:'#e060e0', blocksMove:false, blocksLOS:false },
+];
+
+const TERRAIN_MAP = Object.fromEntries(TERRAIN.map(t => [t.sym, t]));
+
+let mapW = 46, mapH = 48;
+let groundData = [];
+let roofData   = [];
+let currentLayer = 'ground';
+let currentTool  = 'paint';
+let currentTerrain = 'W0';
+let cellSize = 14;
+let isDrawing = false;
+let rectStart = null;
+let lineStart = null;
+let exportLayer = 'ground';
+
+// ============================================================
+// INIT
+// ============================================================
+function initData() {
+  groundData = Array.from({length: mapH}, () => Array(mapW).fill(''));
+  roofData   = Array.from({length: mapH}, () => Array(mapW).fill(''));
+}
+
+function init() {
+  initData();
+  buildPalette();
+  buildLegend();
+  resizeCanvas();
+  loadFromCSV(SAMPLE_GROUND, 'ground');
+  loadFromCSV(SAMPLE_ROOF, 'roof');
+  render();
+  updateStats();
+}
+
+// ============================================================
+// PALETTE
+// ============================================================
+function buildPalette() {
+  const el = document.getElementById('terrain-palette');
+  el.innerHTML = '';
+  TERRAIN.forEach(t => {
+    const d = document.createElement('div');
+    d.className = 'terrain-tile' + (t.sym === currentTerrain ? ' active' : '');
+    d.style.background = t.color;
+    d.style.borderColor = t.sym === currentTerrain ? '#c8972a' : t.border;
+    d.innerHTML = `<span class="sym" style="color:${t.textColor}">${t.sym}</span><span class="lbl">${t.name}</span>`;
+    d.onclick = () => selectTerrain(t.sym);
+    el.appendChild(d);
+  });
+}
+
+function selectTerrain(sym) {
+  currentTerrain = sym;
+  buildPalette();
+  document.getElementById('statSelected').textContent = sym;
+  if (currentTool === 'erase') setTool('paint');
+}
+
+function buildLegend() {
+  const el = document.getElementById('legend');
+  el.innerHTML = '';
+  TERRAIN.slice(0,10).forEach(t => {
+    el.innerHTML += `<div class="legend-item">
+      <div class="legend-swatch" style="background:${t.color};border-color:${t.border};color:${t.textColor}">${t.sym}</div>
+      <span style="font-size:11px">${t.name}</span>
+    </div>`;
+  });
+}
+
+// ============================================================
+// CANVAS
+// ============================================================
+function resizeCanvas() {
+  const canvas = document.getElementById('mapCanvas');
+  canvas.width  = mapW * cellSize;
+  canvas.height = mapH * cellSize;
+}
+
+function setZoom(v) {
+  cellSize = parseInt(v);
+  resizeCanvas();
+  render();
+}
+
+function resizeMap() {
+  const newW = parseInt(document.getElementById('mapW').value);
+  const newH = parseInt(document.getElementById('mapH').value);
+  const newGround = Array.from({length: newH}, (_, r) =>
+    Array.from({length: newW}, (_, c) => (groundData[r] && groundData[r][c]) ? groundData[r][c] : ''));
+  const newRoof = Array.from({length: newH}, (_, r) =>
+    Array.from({length: newW}, (_, c) => (roofData[r] && roofData[r][c]) ? roofData[r][c] : ''));
+  mapW = newW; mapH = newH;
+  groundData = newGround;
+  roofData = newRoof;
+  resizeCanvas();
+  render();
+  updateStats();
+}
+
+function render() {
+  const canvas = document.getElementById('mapCanvas');
+  const ctx = canvas.getContext('2d');
+  const showRoof = document.getElementById('showRoofOverlay').checked;
+  const data = currentLayer === 'ground' ? groundData : roofData;
+  const other = currentLayer === 'ground' ? roofData : groundData;
+
+  ctx.clearRect(0,0,canvas.width, canvas.height);
+
+  // Background
+  ctx.fillStyle = '#0e0904';
+  ctx.fillRect(0,0,canvas.width, canvas.height);
+
+  for (let r = 0; r < mapH; r++) {
+    for (let c = 0; c < mapW; c++) {
+      const x = c * cellSize, y = r * cellSize;
+      const sym = data[r][c];
+      const otherSym = other[r][c];
+
+      // Grid line
+      ctx.fillStyle = '#1c1408';
+      ctx.fillRect(x,y,cellSize,cellSize);
+      ctx.strokeStyle = '#2e2010';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(x+0.5,y+0.5,cellSize-1,cellSize-1);
+
+      // Overlay ghost of other layer
+      if (showRoof && otherSym && TERRAIN_MAP[otherSym]) {
+        const t = TERRAIN_MAP[otherSym];
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = t.color;
+        ctx.fillRect(x,y,cellSize,cellSize);
+        ctx.globalAlpha = 1;
+      }
+
+      if (sym && TERRAIN_MAP[sym]) {
+        const t = TERRAIN_MAP[sym];
+        ctx.fillStyle = t.color;
+        ctx.fillRect(x,y,cellSize,cellSize);
+        // Border highlight
+        ctx.strokeStyle = t.border;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x+0.5,y+0.5,cellSize-1,cellSize-1);
+
+        if (cellSize >= 12) {
+          ctx.fillStyle = t.textColor;
+          ctx.font = `bold ${Math.max(7, cellSize*0.55)}px 'Share Tech Mono', monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(sym, x + cellSize/2, y + cellSize/2);
+        }
+      }
+    }
+  }
+
+  // Column labels (A, B, C...)
+  if (cellSize >= 12) {
+    ctx.fillStyle = '#6b4e2a';
+    ctx.font = `${Math.max(7, cellSize*0.45)}px 'Share Tech Mono', monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let c = 0; c < mapW; c += 5) {
+      let col = '';
+      let n = c + 1;
+      while (n > 0) { let m = (n-1)%26; col = String.fromCharCode(65+m)+col; n = Math.floor((n-m)/26); }
+      ctx.fillText(col, c*cellSize + cellSize/2, 1);
+    }
+    ctx.textAlign = 'right';
+    for (let r = 0; r < mapH; r += 5) {
+      ctx.fillText(r+1, 0, r*cellSize + cellSize*0.3);
+    }
+  }
+
+  updateTerrainCount();
+}
+
+// ============================================================
+// MOUSE INTERACTION
+// ============================================================
+const canvas = document.getElementById('mapCanvas');
+
+function getCellFromEvent(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scale = canvas.width / rect.width;
+  const x = (e.clientX - rect.left) * scale;
+  const y = (e.clientY - rect.top) * scale;
+  return { c: Math.floor(x / cellSize), r: Math.floor(y / cellSize) };
+}
+
+function paintCell(r, c, sym) {
+  const data = currentLayer === 'ground' ? groundData : roofData;
+  if (r >= 0 && r < mapH && c >= 0 && c < mapW) {
+    data[r][c] = sym;
+  }
+}
+
+function floodFill(r, c, newSym) {
+  const data = currentLayer === 'ground' ? groundData : roofData;
+  const target = data[r][c];
+  if (target === newSym) return;
+  const stack = [{r,c}];
+  while (stack.length) {
+    const {r:cr, c:cc} = stack.pop();
+    if (cr<0||cr>=mapH||cc<0||cc>=mapW) continue;
+    if (data[cr][cc] !== target) continue;
+    data[cr][cc] = newSym;
+    stack.push({r:cr-1,c:cc},{r:cr+1,c:cc},{r:cr,c:cc-1},{r:cr,c:cc+1});
+  }
+}
+
+function drawRect(r1,c1,r2,c2,sym) {
+  const minR=Math.min(r1,r2), maxR=Math.max(r1,r2);
+  const minC=Math.min(c1,c2), maxC=Math.max(c1,c2);
+  for (let r=minR;r<=maxR;r++) for (let c=minC;c<=maxC;c++) paintCell(r,c,sym);
+}
+
+function drawLine(r1,c1,r2,c2,sym) {
+  let dr=Math.abs(r2-r1), dc=Math.abs(c2-c1);
+  let sr=r1<r2?1:-1, sc=c1<c2?1:-1;
+  let err=dc-dr, r=r1, c=c1;
+  while(true) {
+    paintCell(r,c,sym);
+    if(r===r2&&c===c2) break;
+    let e2=2*err;
+    if(e2>-dr){err-=dr;c+=sc;}
+    if(e2<dc){err+=dc;r+=sr;}
+  }
+}
+
+canvas.addEventListener('mousedown', e => {
+  isDrawing = true;
+  const {r,c} = getCellFromEvent(e);
+  const sym = currentTool === 'erase' ? '' : currentTerrain;
+  if (currentTool === 'fill') { floodFill(r,c,sym); render(); }
+  else if (currentTool === 'rect') rectStart = {r,c};
+  else if (currentTool === 'line') lineStart = {r,c};
+  else { paintCell(r,c,sym); render(); }
+});
+
+canvas.addEventListener('mousemove', e => {
+  const {r,c} = getCellFromEvent(e);
+  let col=''; let n=c+1;
+  while(n>0){let m=(n-1)%26;col=String.fromCharCode(65+m)+col;n=Math.floor((n-m)/26);}
+  document.getElementById('coordDisplay').textContent = `${col}${r+1}`;
+
+  if (!isDrawing) return;
+  const sym = currentTool === 'erase' ? '' : currentTerrain;
+  if (currentTool === 'paint' || currentTool === 'erase') {
+    paintCell(r,c,sym);
+    render();
+  }
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (!isDrawing) return;
+  isDrawing = false;
+  const {r,c} = getCellFromEvent(e);
+  const sym = currentTool === 'erase' ? '' : currentTerrain;
+  if (currentTool === 'rect' && rectStart) {
+    drawRect(rectStart.r, rectStart.c, r, c, sym);
+    rectStart = null; render();
+  } else if (currentTool === 'line' && lineStart) {
+    drawLine(lineStart.r, lineStart.c, r, c, sym);
+    lineStart = null; render();
+  }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  document.getElementById('coordDisplay').textContent = '—';
+});
+
+// ============================================================
+// TOOL / LAYER CONTROLS
+// ============================================================
+function setTool(t) {
+  currentTool = t;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tool-'+t).classList.add('active');
+  document.getElementById('statTool').textContent = t.charAt(0).toUpperCase()+t.slice(1);
+}
+
+function setLayer(l) {
+  currentLayer = l;
+  document.getElementById('layer-ground').classList.toggle('active', l==='ground');
+  document.getElementById('layer-roof').classList.toggle('active', l==='roof');
+  document.getElementById('statLayer').textContent = l.charAt(0).toUpperCase()+l.slice(1);
+  render();
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function updateStats() {
+  document.getElementById('statSize').textContent = `${mapW}×${mapH}`;
+  document.getElementById('statSelected').textContent = currentTerrain;
+}
+
+function updateTerrainCount() {
+  const data = currentLayer === 'ground' ? groundData : roofData;
+  const counts = {};
+  data.forEach(row => row.forEach(sym => { if (sym) counts[sym]=(counts[sym]||0)+1; }));
+  const el = document.getElementById('terrainCount');
+  el.innerHTML = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([sym,n]) => {
+    const t = TERRAIN_MAP[sym] || {color:'#444',textColor:'#fff',name:sym};
+    return `<div class="info-row"><span>${t.name}</span><span>${n}</span></div>`;
+  }).join('') || '<div style="font-size:11px;color:var(--dust);padding:4px 0">Empty layer</div>';
+}
+
+// ============================================================
+// IMPORT / EXPORT
+// ============================================================
+function dataToCSV(data) {
+  return data.map(row => row.join(',')).join('\n');
+}
+
+function csvToData(csv) {
+  return csv.trim().split('\n').map(row => row.split(',').map(c => c.trim()));
+}
+
+function loadFromCSV(csv, layer) {
+  const parsed = csvToData(csv);
+  const target = layer === 'ground' ? groundData : roofData;
+  parsed.forEach((row, r) => {
+    row.forEach((sym, c) => {
+      if (r < mapH && c < mapW) target[r][c] = sym || '';
+    });
+  });
+}
+
+function generateExport(layer) {
+  exportLayer = layer;
+  const data = layer === 'ground' ? groundData : roofData;
+  document.getElementById('exportText').value = dataToCSV(data);
+}
+
+function copyExport() {
+  const el = document.getElementById('exportText');
+  el.select();
+  document.execCommand('copy');
+  showToast('✅ Copied to clipboard!');
+}
+
+function downloadExport() {
+  const text = document.getElementById('exportText').value;
+  if (!text) { showToast('⚠ Generate a layer first'); return; }
+  const blob = new Blob([text], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `quickdraw_${exportLayer}map.csv`;
+  a.click();
+  showToast('⬇ Downloaded!');
+}
+
+function openExport() {
+  document.getElementById('exportModal').classList.add('open');
+  generateExport('ground');
+}
+
+function openImport() {
+  document.getElementById('importModal').classList.add('open');
+}
+
+function doImport(layer) {
+  const text = document.getElementById('importText').value.trim();
+  if (!text) { showToast('⚠ Paste CSV first'); return; }
+  loadFromCSV(text, layer);
+  closeModal('importModal');
+  render();
+  showToast(`✅ Imported to ${layer} layer`);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function newMap() {
+  if (!confirm('Clear the map? This cannot be undone.')) return;
+  initData();
+  render();
+  showToast('🗺 New map created');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// SAMPLE DATA (your actual map, truncated for load speed)
+// ============================================================
+const SAMPLE_GROUND = `,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,G,G,G,G,G
+,G,G,G,G,G,G,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,,,,G,G,G,G,G
+,,G,G,G,G,G,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,G,G,,,,,,,
+,,,G,G,G,G,G,G,,,,,,,,,,F,F,F,F,F,F,F,F,,,,,,,,,,,G,G,G,G,G,,,,,,
+,,,,G,G,G,G,G,G,G,G,G,G,G,,,,F,,,,,,,F,,,,,,,,,,G,G,G,G,G,G,G,,,,,
+,G,G,G,G,G,G,,,,G,G,G,G,G,,,,F,,,,,,,F,,,,,,,,,,,G,G,G,G,G,G,G,,,,
+,,G,G,G,G,G,,,,,,,,,,,,F,,,,,,,F,,,,,,,,,,,,G,G,G,G,G,G,,,,
+,,G,G,G,G,G,G,,,,,,,,,,,F,,,,,,,F,,,,,,,,,,,,G,G,G,G,G,G,,,,
+,,,G,G,G,G,G,,,,,,,,,,,F,,,,,,,F,,,,,,,,,,,,,G,G,G,G,,,,,
+,,,,,,W0,,,,,,,,,D,,,F,,,,,,,F,,,,,,,,,,,,,,G,G,,,,,,
+,,,,,,,,,,,,,,,,,,W0,W0,W0,W0,W0,D,W0,W0,,,,,,,,,,,,,,,,,,,,,
+,,,,W0,,,,,,,,,,,,,,D,,,,,,,W0,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,W0,,,,,,,,,,W1,,,,,,,W0,,,,,,,,,,,,,,G,G,G,,,,,
+,,,,,,,,,,,,,,,,,,W0,,,,L,,,D,,,,,,,,,,,,,G,G,G,G,G,,,,
+,,,,,,W0,,,,,,,,,,,,W0,W0,W0,D,W0,W0,W0,W0,,,,,,,,,,,,G,G,G,G,G,G,G,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,G,G,G,G,G,G,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,W0,W0,W0,W0,W0,W0,W0,W0,,W0,W0,W2,D,W2,W0,,,,,,,,,,,,,,,,,,,,,,,
+,,,G,G,G,G,,,W0,,,,,,,W0,,W0,,,,,W0,,W0,W0,W0,W1,D,W1,W0,W0,,W0,W1,W1,W1,D,W0,W0,W0,,,,,
+,,,,G,G,,,,D,,,,,,,W0,,W0,W0,W0,,,W0,,W0,L,,,,,,W0,,W0,,,,,,,W0,,,,,
+,,,,,,,,,D,,,,L,,,D,,W0,,D,,,W0,,W0,,,,,,,W2,,D,,,,,,,W0,,,,,
+,,,,,,,,,W0,,,,,,,W0,,W0,W0,W0,D,W0,W0,,W0,,,,,,,D,,W2,,,,L,,,W0,,,,,
+,,,,,,,,,W0,W0,D,W2,W0,W0,W0,W0,,,,,,,,,D,,,,,,,W0,,W0,,,,*,,,W0,,,,,
+,,,,,,,,,F,,,,,,,F,,,,,,,,,W0,W0,D,W2,W0,W0,W0,W0,,W0,W0,D,W0,W0,W0,W0,W0,,,,,
+,,,,,,,,,F,,,,,,,F,,,,,,,,,F,,,,,,,F,,F,,,,,,,F,,,,,
+,,,,,,,,,F,,,,,,,F,,,,,,,,,F,,,,,,,F,,F,,,,,,,F,,,,,
+,,,,,,,,,F,,D,,,,,F,,,,,,,,,F,,,,,,,F,,F,,,,,,,F,,,,,
+,,,,,,,,,F,,W0,,,,,F,,,,,,,,,F,,,,,,,F,,F,,,,,,,F,,,,,
+,,,,,,,,,F,,,,,,,F,,,,,,,,,F,,,,,,,F,,F,,,,,,,F,,,,,
+,,,,,,,,,F,F,F,F,F,F,F,F,,,,,,,,,F,,,,,,,F,,F,,,,,,,F,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,F,F,F,F,F,F,F,F,,F,F,F,F,F,F,F,F,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,G,G,G,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,G,G,G,,,,
+,,,,G,G,G,G,G,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,G,G,G,G,,,
+,,,G,G,G,G,G,G,G,,,,,,,,,,,,,W0,,W0,,,,,,,,,,,,,,,G,G,G,G,G,G,,
+,,,,G,G,G,G,G,G,G,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,G,G,G,G,G,G,,
+,,,,,G,G,G,G,G,G,,,,,,,,,,,,W0,,,,W0,,W0,,,,,,,,,,G,G,G,G,G,G,G,,
+,,,,,G,G,G,G,G,G,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,G,,,,,,,
+,,,,,,G,G,G,G,,,,,,,,,,,,,,,W0,,,,,,,,,,,,,G,,,,,,,,,`;
+
+const SAMPLE_ROOF = `,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,W0,,W0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,W4,W4,W4,W4,W4,W4,W4,W4,,,,,,,,,,,,,,,,,,,,,,
+,,,,W0,,,,W0,,W0,,,,,,,,W4,W3,W3,W3,W3,W3,W3,W4,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,W4,W3,W3,W3,W3,W3,W3,W4,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,W0,,,,,,,,,,,,W4,W3,W3,W3,L,W3,W3,W4,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,W4,W4,W4,W4,W4,W4,W4,W4,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,W4,W4,W4,W4,W4,W4,W4,W4,,W4,W4,W4,W4,W4,W4,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,W4,W3,W3,W3,W3,W3,W3,W4,,W4,W3,W3,W3,W3,W4,,W4,W4,W4,W4,W4,W4,W4,W4,,W4,W4,W4,W4,W4,W4,W4,W4,,,,,,
+,,,,,,,,,W4,W3,W3,W3,W3,W3,W3,W4,,W4,W3,W3,W3,W3,W4,,W4,L,W3,W3,W3,W3,W3,W4,,W4,W3,W3,W3,W3,W3,W3,W4,,,,,,
+,,,,,,,,,W4,W3,W3,W3,L,W3,W3,W4,,W4,W3,W3,W3,W3,W4,,W4,W3,W3,W3,W3,W3,W3,W4,,W4,W3,W3,W3,W3,W3,W3,W4,,,,,,
+,,,,,,,,,W4,W3,W3,W3,W3,W3,W3,W4,,W4,W4,W4,W4,W4,W4,,W4,W3,W3,W3,W3,W3,W3,W4,,W4,W3,W3,W3,L,W3,W3,W4,,,,,,
+,,,,,,,,,W4,W4,W4,W4,W4,W4,W4,W4,,,,,,,,,W4,W3,W3,W3,W3,W3,W3,W4,,W4,W3,W3,W3,W3,W3,W3,W4,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,W4,W4,W4,W4,W4,W4,W4,W4,,W4,W4,W4,W4,W4,W4,W4,W4,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,W0,,W0,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,W0,,,,W0,,W0,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,W0,,,,,,,,,,,,,,,,,,,,,,,`;
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  const keys = {'p':'paint','e':'erase','f':'fill','r':'rect','l':'line'};
+  if (keys[e.key]) setTool(keys[e.key]);
+  if (e.key === 'g') setLayer(currentLayer === 'ground' ? 'roof' : 'ground');
+  if (e.key === 'Escape') { closeModal('exportModal'); closeModal('importModal'); }
+});
+
+init();
+</script>
+</body>
+</html>qu
